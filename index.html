@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fanatics Instant Rips Analyzer</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#fff;--bg2:#f5f5f4;--bg3:#eeece8;
+  --tx:#1a1a1a;--tx2:#6b6b6b;
+  --bd:rgba(0,0,0,0.12);--bd2:rgba(0,0,0,0.22);
+  --r:8px;--rl:12px;
+  --ok:#1a7f4b;--info:#185fa5;--bad:#a32d2d;
+  --f:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --fm:'SFMono-Regular',Consolas,monospace;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#1c1c1a;--bg2:#252522;--bg3:#2e2e2a;
+  --tx:#e8e6e0;--tx2:#9a9890;
+  --bd:rgba(255,255,255,0.1);--bd2:rgba(255,255,255,0.2);
+  --ok:#4ade80;--info:#60a5fa;--bad:#f87171;
+}}
+body{font-family:var(--f);background:var(--bg3);color:var(--tx);min-height:100vh;padding:2rem 1rem;}
+.wrap{max-width:940px;margin:0 auto;}
+h1{font-size:22px;font-weight:500;margin-bottom:4px;}
+.sub{font-size:13px;color:var(--tx2);margin-bottom:1.5rem;}
+details{background:var(--bg);border:0.5px solid var(--bd);border-radius:var(--rl);padding:12px 16px;margin-bottom:1.25rem;}
+details summary{font-size:13px;color:var(--tx2);cursor:pointer;user-select:none;}
+details[open] summary{margin-bottom:10px;}
+.hint{font-size:12px;color:var(--tx2);margin:8px 0 6px;}
+textarea{width:100%;height:80px;font-size:11px;font-family:var(--fm);resize:vertical;border:0.5px solid var(--bd2);border-radius:var(--r);padding:8px;background:var(--bg);color:var(--tx);outline:none;}
+textarea:focus{box-shadow:0 0 0 2px var(--info);}
+.row{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center;}
+button{background:var(--bg);border:0.5px solid var(--bd2);border-radius:var(--r);padding:6px 14px;font-size:13px;color:var(--tx);cursor:pointer;font-family:var(--f);}
+button:hover{background:var(--bg2);}
+button:active{transform:scale(0.98);}
+input,select{background:var(--bg);border:0.5px solid var(--bd2);border-radius:var(--r);padding:7px 10px;font-size:13px;color:var(--tx);font-family:var(--f);outline:none;}
+input:focus,select:focus{box-shadow:0 0 0 2px var(--info);}
+
+/* Score row */
+.score-row{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:stretch;margin-bottom:1.25rem;}
+@media(max-width:560px){.score-row{grid-template-columns:1fr;}}
+.score-card{border:0.5px solid var(--bd);border-radius:var(--rl);padding:14px 18px;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;min-width:140px;}
+.score-label{font-size:11px;color:var(--tx2);margin-bottom:4px;white-space:nowrap;}
+.score-num{font-size:44px;font-weight:500;line-height:1;}
+.score-grade{font-size:13px;font-weight:500;margin-top:4px;}
+.score-desc{font-size:10px;color:var(--tx2);margin-top:3px;text-align:center;}
+.sb{margin-top:10px;width:100%;}
+.sb-row{display:flex;align-items:center;gap:6px;font-size:10px;margin-bottom:3px;}
+.sb-lbl{color:var(--tx2);white-space:nowrap;width:120px;flex-shrink:0;}
+.sb-bg{flex:1;height:4px;background:var(--bg2);border-radius:2px;}
+.sb-fill{height:4px;border-radius:2px;background:var(--info);}
+.sb-pts{color:var(--tx2);min-width:30px;text-align:right;}
+.insights-card{border:0.5px solid var(--bd);border-radius:var(--rl);padding:14px 16px;background:var(--bg);display:flex;flex-direction:column;gap:10px;}
+.ins-lbl{font-size:11px;color:var(--tx2);}
+.ins-txt{font-size:13px;color:var(--tx);line-height:1.6;flex:1;}
+.copy-btn{align-self:flex-end;font-size:12px;padding:5px 12px;}
+.copy-btn.ok{color:var(--ok);border-color:var(--ok);}
+
+/* Main tabs */
+.mtabs{display:flex;gap:4px;margin-bottom:1.25rem;border-bottom:0.5px solid var(--bd);}
+.mtab{padding:7px 18px;font-size:13px;cursor:pointer;border:none;background:none;color:var(--tx2);border-bottom:2px solid transparent;margin-bottom:-0.5px;font-family:var(--f);}
+.mtab.on{color:var(--tx);font-weight:500;border-bottom:2px solid var(--tx);}
+.panel{display:none;}.panel.on{display:block;}
+
+/* Stats grid */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:1.25rem;}
+.stat{background:var(--bg2);border-radius:var(--r);padding:10px 12px;}
+.slbl{font-size:11px;color:var(--tx2);margin-bottom:3px;}
+.sval{font-size:20px;font-weight:500;}
+.sval.g{color:#BA7517;}.sval.c{color:var(--info);}.sval.h{color:var(--ok);}
+
+/* Base banner */
+.banner{border:0.5px solid var(--bd);border-radius:var(--rl);padding:14px 18px;margin-bottom:1.25rem;background:var(--bg);display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
+.bmain{display:flex;flex-direction:column;}
+.blbl{font-size:11px;color:var(--tx2);margin-bottom:2px;}
+.bval{font-size:28px;font-weight:500;}
+.bnote{font-size:11px;color:var(--tx2);margin-top:4px;}
+.bdiv{width:0.5px;height:40px;background:var(--bd);flex-shrink:0;}
+.bstats{display:flex;gap:20px;flex-wrap:wrap;}
+.bs .bl{font-size:10px;color:var(--tx2);}
+.bs .bv{font-size:14px;font-weight:500;}
+
+/* Tier cards */
+.tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1.25rem;}
+.tc{border:0.5px solid var(--bd);border-radius:var(--rl);padding:12px 14px;background:var(--bg);}
+.tct{font-size:11px;color:var(--tx2);margin-bottom:6px;}
+.tcn{font-size:22px;font-weight:500;}
+.tcn.tg{color:#BA7517;}.tcn.tch{color:var(--info);}.tcn.tb{color:var(--tx2);}
+.tcs{font-size:11px;color:var(--tx2);margin-top:2px;}
+
+/* Checklist table */
+.ctabs{display:flex;gap:4px;margin-bottom:1rem;border-bottom:0.5px solid var(--bd);}
+.ctab{padding:6px 14px;font-size:13px;cursor:pointer;border:none;background:none;color:var(--tx2);border-bottom:2px solid transparent;margin-bottom:-0.5px;font-family:var(--f);}
+.ctab.on{color:var(--tx);font-weight:500;border-bottom:2px solid var(--tx);}
+.topbar{display:flex;gap:8px;align-items:center;margin-bottom:1rem;flex-wrap:wrap;}
+.topbar input[type=text]{flex:1;min-width:160px;}
+.topbar input[type=number]{width:100px;}
+#fcount{font-size:12px;color:var(--tx2);white-space:nowrap;}
+.tblwrap{overflow-x:auto;background:var(--bg);border:0.5px solid var(--bd);border-radius:var(--rl);}
+table{width:100%;border-collapse:collapse;font-size:12.5px;table-layout:fixed;}
+th{text-align:left;padding:8px 10px;font-weight:500;font-size:11px;color:var(--tx2);border-bottom:0.5px solid var(--bd);white-space:nowrap;}
+td{padding:7px 10px;border-bottom:0.5px solid var(--bd);color:var(--tx);vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--bg2);}
+.cn{width:42%;}.ct{width:10%;}.cv{width:15%;}.cod{width:20%;}.crk{width:8%;}
+.badge{display:inline-block;font-size:10px;padding:2px 7px;border-radius:var(--r);font-weight:500;}
+.bdgg{background:#FAEEDA;color:#633806;}
+.bdgc{background:#E6F1FB;color:#0C447C;}
+.bdgb{background:#F1EFE8;color:#444441;}
+@media(prefers-color-scheme:dark){
+  .bdgg{background:#412402;color:#FAC775;}
+  .bdgc{background:#042C53;color:#85B7EB;}
+  .bdgb{background:#2C2C2A;color:#B4B2A9;}
+}
+.barwrap{display:flex;align-items:center;gap:6px;}
+.bar{height:5px;border-radius:3px;background:var(--bg2);flex:1;min-width:40px;}
+.barfill{height:5px;border-radius:3px;}
+.fgrail{background:#BA7517;}.fchase{background:#378ADD;}.fbase{background:#888780;}
+.pill{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;font-weight:500;}
+.plg{background:#FAEEDA;color:#633806;}
+.plc{background:#E6F1FB;color:#0C447C;}
+.plb{background:#F1EFE8;color:#444441;}
+@media(prefers-color-scheme:dark){
+  .plg{background:#412402;color:#FAC775;}
+  .plc{background:#042C53;color:#85B7EB;}
+  .plb{background:#2C2C2A;color:#B4B2A9;}
+}
+.nores{padding:2rem;text-align:center;color:var(--tx2);font-size:13px;}
+.foot{font-size:11px;color:var(--tx2);margin-top:8px;}
+
+/* Regression panel */
+.reg-sec{background:var(--bg);border:0.5px solid var(--bd);border-radius:var(--rl);padding:16px;margin-bottom:1rem;}
+.reg-h{font-size:13px;font-weight:500;margin-bottom:6px;}
+.reg-sub{font-size:11px;color:var(--tx2);margin-bottom:10px;}
+.coef-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:10px;}
+.coef-card{background:var(--bg2);border-radius:var(--r);padding:10px 12px;}
+.coef-name{font-size:10px;color:var(--tx2);margin-bottom:3px;}
+.coef-val{font-size:18px;font-weight:500;}
+.coef-val.pos{color:var(--ok);}.coef-val.neg{color:var(--bad);}
+.coef-sub{font-size:10px;color:var(--tx2);margin-top:2px;}
+.r2wrap{display:flex;align-items:center;gap:10px;margin-top:8px;}
+.r2bg{flex:1;height:8px;background:var(--bg2);border-radius:4px;}
+.r2fill{height:8px;border-radius:4px;background:var(--info);}
+.r2lbl{font-size:12px;font-weight:500;min-width:44px;}
+.reg-note{font-size:11px;color:var(--tx2);margin-top:8px;line-height:1.5;}
+.rtbl{width:100%;border-collapse:collapse;font-size:12px;}
+.rtbl th{text-align:left;padding:6px 8px;font-size:11px;color:var(--tx2);border-bottom:0.5px solid var(--bd);}
+.rtbl td{padding:6px 8px;border-bottom:0.5px solid var(--bd);color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.rtbl tr:last-child td{border-bottom:none;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Fanatics Instant Rips Analyzer</h1>
+  <p class="sub">Paste a checklist to calculate hit odds, tier breakdowns, regression analysis, and Pack Quality Score.</p>
+
+  <details>
+    <summary>+ Paste new checklist</summary>
+    <p class="hint">Fanatics format: Card Name, then Card Ladder Value $X, then Grail/Chase on the next line. Cards with no tier label default to Base.</p>
+    <textarea id="pasteBox" placeholder="Card Name&#10;Card Ladder Value $838.00&#10;Grail&#10;&#10;Another Card&#10;Card Ladder Value $280.00&#10;Chase"></textarea>
+    <div class="row">
+      <button onclick="loadPaste()">Parse checklist</button>
+      <button onclick="loadBuiltIn()">Reload sample data</button>
+      <span id="pstatus" style="font-size:12px;color:var(--tx2);"></span>
+    </div>
+  </details>
+
+  <!-- Score + Insights -->
+  <div class="score-row">
+    <div class="score-card">
+      <div class="score-label">Pack Quality Score</div>
+      <div class="score-num" id="pqs-num">—</div>
+      <div class="score-grade" id="pqs-grade"></div>
+      <div class="score-desc" id="pqs-desc"></div>
+      <div class="sb" id="pqs-sb"></div>
+    </div>
+    <div class="insights-card">
+      <div class="ins-lbl">Shareable insights — click Copy to grab this text</div>
+      <div class="ins-txt" id="ins-txt">Load a checklist to generate insights.</div>
+      <button class="copy-btn" id="copy-btn" onclick="copyInsights()">Copy</button>
+    </div>
+  </div>
+
+  <!-- Main tabs -->
+  <div class="mtabs">
+    <button class="mtab on" onclick="setMain('overview',this)">Overview</button>
+    <button class="mtab" onclick="setMain('regression',this)">Regression Analysis</button>
+    <button class="mtab" onclick="setMain('checklist',this)">Checklist</button>
+  </div>
+
+  <!-- OVERVIEW PANEL -->
+  <div id="panel-overview" class="panel on">
+    <div class="grid">
+      <div class="stat"><div class="slbl">Total cards</div><div class="sval" id="s-total">—</div></div>
+      <div class="stat"><div class="slbl">Grails</div><div class="sval g" id="s-grail">—</div></div>
+      <div class="stat"><div class="slbl">Chases</div><div class="sval c" id="s-chase">—</div></div>
+      <div class="stat"><div class="slbl">Base</div><div class="sval" id="s-base">—</div></div>
+      <div class="stat"><div class="slbl">Hit odds</div><div class="sval h" id="s-hit">—</div></div>
+      <div class="stat"><div class="slbl">Grail odds</div><div class="sval g" id="s-godd">—</div></div>
+      <div class="stat"><div class="slbl">Pool EV</div><div class="sval" id="s-ev">—</div></div>
+      <div class="stat"><div class="slbl">90th pct value</div><div class="sval" id="s-p90v">—</div></div>
+      <div class="stat"><div class="slbl">Cards &ge; 90th pct</div><div class="sval" id="s-p90n">—</div></div>
+    </div>
+
+    <div class="banner">
+      <div class="bmain">
+        <div class="blbl">Base pack average value</div>
+        <div class="bval" id="b-avg">—</div>
+        <div class="bnote" id="b-note"></div>
+      </div>
+      <div class="bdiv"></div>
+      <div class="bstats">
+        <div class="bs"><div class="bl">Lowest base</div><div class="bv" id="b-min">—</div></div>
+        <div class="bs"><div class="bl">Highest base</div><div class="bv" id="b-max">—</div></div>
+        <div class="bs"><div class="bl">Median base</div><div class="bv" id="b-med">—</div></div>
+        <div class="bs"><div class="bl">Base cards</div><div class="bv" id="b-cnt">—</div></div>
+        <div class="bs"><div class="bl">Below avg</div><div class="bv" id="b-bel">—</div></div>
+        <div class="bs"><div class="bl">Above avg</div><div class="bv" id="b-abv">—</div></div>
+      </div>
+    </div>
+
+    <div class="tiers">
+      <div class="tc"><div class="tct">Grail</div><div class="tcn tg" id="t-gn">—</div><div class="tcs" id="t-gavg">—</div><div class="tcs" id="t-grng">—</div></div>
+      <div class="tc"><div class="tct">Chase</div><div class="tcn tch" id="t-cn">—</div><div class="tcs" id="t-cavg">—</div><div class="tcs" id="t-crng">—</div></div>
+      <div class="tc"><div class="tct">Base</div><div class="tcn tb" id="t-bn">—</div><div class="tcs" id="t-bavg">—</div><div class="tcs" id="t-brng">—</div></div>
+    </div>
+    <p class="foot" id="foot"></p>
+  </div>
+
+  <!-- REGRESSION PANEL -->
+  <div id="panel-regression" class="panel">
+    <div class="reg-sec">
+      <div class="reg-h">OLS Regression: What predicts Card Ladder value in this pool?</div>
+      <div class="reg-sub">Features parsed from card names: PSA/BGS grade, serial number scarcity, auto, rookie, tier. Outcome variable: Card Ladder value ($).</div>
+      <div class="coef-grid" id="reg-coefs"></div>
+      <div style="margin-top:4px;">
+        <div style="font-size:11px;color:var(--tx2);margin-bottom:4px;">Model fit — R&sup2; (share of value variance explained by features)</div>
+        <div class="r2wrap">
+          <div class="r2bg"><div class="r2fill" id="r2-fill" style="width:0%"></div></div>
+          <div class="r2lbl" id="r2-val">—</div>
+        </div>
+      </div>
+      <div class="reg-note" id="reg-note"></div>
+    </div>
+
+    <div class="reg-sec">
+      <div class="reg-h">Value driver breakdown</div>
+      <div class="reg-sub">Average Card Ladder value for cards with vs. without each feature — raw impact before controlling for other variables.</div>
+      <table class="rtbl">
+        <thead><tr><th>Feature</th><th>With (n)</th><th>Avg w/</th><th>Without (n)</th><th>Avg w/o</th><th>Delta</th></tr></thead>
+        <tbody id="driver-tbody"></tbody>
+      </table>
+    </div>
+
+    <div class="reg-sec">
+      <div class="reg-h">Predicted vs. actual — top residuals</div>
+      <div class="reg-sub">Cards where actual value far exceeds the model prediction may be undervalued sleepers. Large negative residuals are overpriced relative to their observable features.</div>
+      <table class="rtbl" style="table-layout:fixed;">
+        <thead><tr><th style="width:42%">Card</th><th style="width:10%">Tier</th><th style="width:14%">Actual</th><th style="width:14%">Predicted</th><th style="width:14%">Residual</th></tr></thead>
+        <tbody id="resid-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- CHECKLIST PANEL -->
+  <div id="panel-checklist" class="panel">
+    <div class="ctabs">
+      <button class="ctab on" onclick="setCtab('all',this)">All</button>
+      <button class="ctab" onclick="setCtab('Grail',this)">Grail</button>
+      <button class="ctab" onclick="setCtab('Chase',this)">Chase</button>
+      <button class="ctab" onclick="setCtab('Base',this)">Base</button>
+    </div>
+    <div class="topbar">
+      <input type="text" id="q" placeholder="Search cards, players..." oninput="renderTable()" />
+      <label style="font-size:12px;color:var(--tx2);white-space:nowrap;">Min $</label>
+      <input type="number" id="minv" value="0" min="0" step="10" oninput="renderTable()" />
+      <span id="fcount"></span>
+      <select id="srt" onchange="applySort()">
+        <option value="rank-asc">Checklist order</option>
+        <option value="val-desc">Value high to low</option>
+        <option value="val-asc">Value low to high</option>
+        <option value="name-asc">Name A to Z</option>
+      </select>
+    </div>
+    <div class="tblwrap">
+      <table>
+        <thead><tr>
+          <th class="cn">Card</th>
+          <th class="ct">Tier</th>
+          <th class="cv">CL Value</th>
+          <th class="cod">Odds (1 pack)</th>
+          <th class="crk">#</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div id="nores" class="nores" style="display:none;">No cards match filters.</div>
+    </div>
+  </div>
+
+</div><!-- end .wrap -->
+<script>
+var RAW=[
+["2017 Panini Prizm Introductions Patrick Mahomes II ROOKIE #2 PSA 10 GEM MINT",746,"Grail"],
+["2020 Panini Obsidian Color Blast Black Tom Brady #CBB12 PSA 10 GEM MINT",2234,"Grail"],
+["2000 Playoff Absolute Tom Brady ROOKIE /3000 #195 PSA 7 NRMT",751,"Chase"],
+["2023 Select Premier Dragon Scale Gold Prizm Sam LaPorta ROOKIE /10 #106 PSA 10 GEM MINT",293,"Chase"],
+["2024 Panini Phoenix Color Blast C.J. Stroud #CB-CSD PSA 9 MINT",280,"Chase"],
+["2024 Panini Certified Night Moves Bo Nix ROOKIE #NM-BNX PSA 10 GEM MINT",267,"Chase"],
+["2000 Score Football Tom Brady ROOKIE #316 PSA 8 NM-MT",294.95,"Chase"],
+["2001 Upper Deck Vintage Terrell Owens AUTO #TOVS PSA 9 MINT",264,"Chase"],
+["2024 Panini Prizm Pink Wave Caleb Williams ROOKIE #301 PSA 10 GEM MINT",261.48,"Chase"],
+["2021 Select Selections Zebra Prizm Devonta Smith ROOKIE #RS9 PSA 10 GEM MINT",279,"Chase"],
+["2024 Panini Mosaic Black DJ Moore 1/1 #38 PSA 9 MINT",268,"Chase"],
+["2023 Panini Prizm Gold Sparkle Quentin Johnston ROOKIE /24 #353 PSA 10 GEM MINT",296,"Chase"],
+["1986 Topps Football Jerry Rice ROOKIE #161 PSA 8 NM-MT",299.99,"Chase"],
+["2024 Select Club Level Dragon Scale Prizm Bucky Irving ROOKIE /81 #239 PSA 10 GEM MINT",285,"Chase"],
+["2023 Topps Composite Cosmic Gold Interstellar Anthony Richardson ROOKIE AUTO /50 PSA 10 GEM",289,"Chase"],
+["2022 Panini Chronicles Legacy Update Blue Jordan Davis ROOKIE AUTO /10 #203 PSA 10 GEM MINT",279,"Chase"],
+["2024 Panini Mosaic Purple No Huddle Jayden Daniels ROOKIE /50 #302 PSA 9 MINT",264,"Chase"],
+["2024 Donruss Optic Preview Purple Marvin Harrison Jr. ROOKIE /50 #393 PSA 10 GEM MINT",264,"Chase"],
+["2024 Bowman University Yellow Refractor Matthew Golden RC AUTO /75 PSA 10 GEM MINT",282,"Chase"],
+["2024 Panini Contenders Optic JJ McCarthy ROOKIE AUTO #101 PSA 10 GEM MINT",275,"Chase"],
+["2024 Panini Select Suite White Prizm Patrick Mahomes II /35 #388 PSA 10 GEM MINT",300,"Chase"],
+["2024 Panini Prizm Blue Shimmer Cooper Dejean ROOKIE /25 #321 PSA 9 MINT",286,"Chase"],
+["2024 Donruss Elite Elitist Blue JJ McCarthy ROOKIE /10 #10 PSA 10 GEM MINT",276,"Chase"],
+["2024 Panini Prizm Gold Sparkle Terrell Owens /24 #257 PSA 10 GEM MINT",273,"Chase"],
+["2024 Topps Signature Class Tom Brady and Drake Maye ROOKIE #PP-7 PSA 10 GEM",260,"Chase"],
+["2024 Panini Mosaic White Brock Bowers ROOKIE /25 #313 PSA 9 MINT",266,"Chase"],
+["2016 Panini Prizm Blue Wave Jared Goff ROOKIE /149 #208 PSA 10 GEM MINT",282,"Chase"],
+["2012 Topps Chrome Gold Refractor Ryan Tannehill ROOKIE /50 #109 BGS 9.5 GEM MINT",292,"Chase"],
+["2023 Panini Prizm Purple Power Hendon Hooker ROOKIE PATCH AUTO /49 PSA 10 GEM MINT",282,"Chase"],
+["2021 Bowman University Chrome Aqua Refractor Michael Penix Jr. ROOKIE /299 PSA 10 GEM MINT",102,"Base"],
+["2024 Panini Prizm Green Ice Joe Milton III ROOKIE #354 PSA 10 GEM MINT",86,"Base"],
+["2024 Panini Phoenix Contours Blue Marvin Harrison Jr. ROOKIE /50 PSA 10 GEM MINT",87,"Base"],
+["2024 Donruss Optic Pink Velocity Joe Milton III ROOKIE /80 PSA 10 GEM MINT",105,"Base"],
+["2019 Select Premier Level Silver Prizm Patrick Mahomes II #129 PSA 10 GEM MINT",85,"Base"],
+["2023 Panini Prizm Red Shimmer Tank Dell ROOKIE /35 #341 PSA 10 GEM MINT",103,"Base"],
+["2011 Panini Threads J.J. Watt ROOKIE #190 PSA 10 GEM MINT",123,"Base"],
+["2023 Select Turbocharged Jaxon Smith-Njigba ROOKIE PSA 10 GEM MINT",93,"Base"],
+["2021 Panini Mosaic Masquerade Ballers Patrick Mahomes II PSA 9 MINT",87,"Base"],
+["2003 Fleer Avant Peyton Manning #13 PSA 10 GEM MINT",86,"Base"],
+["2024 Panini Select Suite White Prizm Xavier Worthy ROOKIE /35 PSA 10 GEM MINT",89,"Base"],
+["1991 Stadium Club Football Barry Sanders #361 PSA 10 GEM MINT",105,"Base"],
+["2024 Bowman Best Yellow Refractor Rocco Becht ROOKIE AUTO /75 PSA 10 GEM MINT",102,"Base"],
+["2024 Panini Mosaic Fusion Red Yellow Brian Thomas Jr. ROOKIE AUTO PSA 9 MINT",107,"Base"],
+["2024 Donruss Optic Red Mojo Michael Penix Jr. ROOKIE PSA 10 GEM MINT",102.5,"Base"],
+["2024 Donruss Optic Preview Red Pandora Jayden Daniels ROOKIE PSA 7 NRMT",101,"Base"],
+["2024 Donruss Optic Preview Pink Prizm Bo Nix ROOKIE PSA 10 GEM MINT",90,"Base"],
+["2024 Panini Prizm Gold Wave Trevor Lawrence /10 #129 PSA 9 MINT",95,"Base"],
+["2021 Panini Mosaic White Mosaic Deion Sanders 1/25 PSA 10 GEM MINT",97,"Base"],
+["2024 Topps Now Drake Maye ROOKIE #10 PSA 10 GEM MINT",127.66,"Base"],
+["2024 Bowman University Chrome Sapphire Yellow Cameron Ward ROOKIE /75 PSA 10 GEM MINT",99.99,"Base"],
+["1989 Score Supplemental Carl Hairston PSA 10 GEM MINT",107,"Base"],
+["1958 Topps Football Ollie Matson PSA 8 NM-MT",90,"Base"],
+["2023 Panini Spectra Chromatic C.J. Stroud ROOKIE /99 PSA 9 MINT",138,"Base"],
+["2020 Panini Chronicles Prizm Black Brandon Aiyuk ROOKIE AUTO /49 PSA 9 MINT",106,"Base"],
+["1989 Topps Traded Tim McDonald PSA 10 GEM MINT",100,"Base"],
+["2024 Topps Chrome Orange Refractor Blake Corum ROOKIE /25 PSA 10 GEM",99,"Base"],
+["2022 Panini XR Garrett Wilson ROOKIE PATCH AUTO PSA 8 NM-MT",106,"Base"],
+["2023 Panini Prizm Green Ice Josh Downs ROOKIE #345 PSA 10 GEM MINT",107,"Base"],
+["2024 Panini Prizm Draft Picks Saturday Star Red Michael Penix Jr. ROOKIE AUTO /199 PSA 9",89,"Base"],
+["2024 Bowman Chrome University Sapphire Jaxson Dart ROOKIE PSA 9 MINT",101,"Base"],
+["2024 Panini Prizm Decade Dominance Mojo Barry Sanders /30 PSA 8 NM-MT",85,"Base"],
+["2021 Panini Mosaic Genesis DeVonta Smith ROOKIE PSA 9 MINT",103,"Base"],
+["2007 Bowman Chrome Blue Refractor Peyton Manning /150 PSA 9 MINT",93,"Base"],
+["2023 Panini Luminance Gold Patrick Mahomes II PSA 10 GEM MINT",99,"Base"],
+["1994 Topps Special Effects Marshall Faulk ROOKIE PSA 9 MINT",91,"Base"],
+["2011 Topps Tyron Smith ROOKIE #69 PSA 10 GEM MINT",109,"Base"],
+["1995 Ultra Football Derrick Brooks ROOKIE PSA 10 GEM MINT",89.99,"Base"],
+["2022 Donruss Optic Aqua Brock Purdy ROOKIE /299 PSA 9 MINT",99,"Base"],
+["2000 Fleer Tradition Tom Brady ROOKIE #352 PSA 8 NM-MT",96.5,"Base"],
+["2024 Panini Prizm Draft Picks DJ Lagway ROOKIE AUTO /149 PSA 9",88,"Base"],
+["2024 Topps Signature Class Fluidity Caleb Williams ROOKIE /175 PSA 7 NRMT",91,"Base"],
+["2023 Panini Prizm Draft Picks Mojo Anthony Richardson ROOKIE AUTO /25 PSA 9 MINT",86,"Base"],
+["2023 Donruss Optic Freedom Nolan Smith ROOKIE PSA 10 GEM MINT",87,"Base"],
+["1990 Topps Football Bo Jackson PSA 10 GEM MINT",91,"Base"],
+["2023 Panini Prizm Red White Blue CJ Stroud ROOKIE PSA 10 GEM MINT",99.99,"Base"],
+["2019 Panini Gold Standard DK Metcalf ROOKIE PATCH AUTO /19 PSA 8 NM-MT",90,"Base"],
+["2023 Panini Prizm Silver Devon Witherspoon ROOKIE PSA 10 GEM MINT",102,"Base"],
+["2022 Select Suite Level Black Prizm Jordan Poyer 1/1 PSA 9 MINT",105,"Base"],
+["2024 Panini Contenders Divisional Ticket Edefuan Ulofoshio ROOKIE AUTO /99 PSA 9 MINT",101,"Base"],
+["2024 Select Concourse White Prizm Brian Thomas Jr. ROOKIE /35 PSA 9 MINT",85,"Base"],
+["2010 Donruss Elite Tom Brady PSA 10 GEM MINT",95,"Base"],
+["2024 Topps Chrome Prism Refractor Drake Maye ROOKIE PSA 9 MINT",85,"Base"],
+["2024 Panini Prizm Silver Caleb Williams ROOKIE PSA 8 NM-MT",112.5,"Base"],
+["2023 Donruss Optic Red DeVon Achane ROOKIE AUTO /75 PSA 9 MINT",92,"Base"],
+["2024 Panini Prizm Draft Picks Legends Troy Polamalu PATCH AUTO /25 PSA 9 MINT",101,"Base"],
+["2024 Panini Prizm Bucky Irving ROOKIE AUTO /49 PSA 10",95,"Base"],
+["2000 Press Pass Tom Brady ROOKIE PSA 7 NRMT",99,"Base"],
+["2021 Donruss Optic Fire Jaylen Waddle ROOKIE PSA 9 MINT",86,"Base"],
+["2000 Topps Chrome Peyton Manning PSA 9 MINT",91,"Base"],
+["2023 Bowman Chrome University Green Shimmer Carson Beck ROOKIE /99 PSA 10 GEM MINT",93,"Base"],
+["2023 Panini Zenith Zoom DeVon Achane ROOKIE PSA 9 MINT",97,"Base"],
+["2021 Panini Prizm Hyper Justin Fields ROOKIE /175 PSA 10 GEM MINT",101,"Base"],
+["1988 Topps Football Bo Jackson ROOKIE PSA 9 MINT",135,"Base"],
+["2024 Topps Midnight Twilight Xavier Worthy ROOKIE PATCH AUTO /99 PSA 9 MINT",109,"Base"],
+["2021 Select Maroon Prizm Javonte Williams ROOKIE AUTO /60 PSA 10 GEM MINT",105,"Base"],
+["2022 Panini Mosaic Gold Wave Zamir White ROOKIE /17 PSA 10 GEM MINT",100,"Base"],
+["2021 Panini Prizm Hyper Justin Fields ROOKIE /175 #334 PSA 10 GEM MINT",101,"Base"],
+["2024 Donruss Optic Preview Red Green Prizm Bo Nix ROOKIE PSA 10 GEM MINT",85,"Base"],
+["2022 Absolute Red Squares Chris Olave ROOKIE AUTO PSA 9 MINT",104,"Base"],
+["2022 Panini Chronicles Score Premium George Pickens ROOKIE AUTO PSA 10 GEM MINT",85,"Base"],
+["1997 Finest Refractor Brett Favre PSA 10 GEM MINT",103,"Base"],
+["2024 Topps Cosmic Chrome CJ Stroud /50 PSA 8 NM-MT",93,"Base"],
+["2022 Panini Mosaic Glass Drake London ROOKIE PSA 9 MINT",91,"Base"],
+["1982 Topps Football David Verser PSA 10 GEM MINT",86,"Base"],
+["1984 Topps Football Dan Marino ROOKIE PSA 7 NRMT",75.98,"Base"],
+["2024 Panini Prizm Silver Bo Nix ROOKIE PSA 9 MINT",85,"Base"],
+["2021 Select Sensations Zebra Prizm Justin Herbert PSA 9 MINT",87,"Base"],
+["2024 Panini Prizm Draft Picks Blue Arch Manning ROOKIE /199 PSA 9 MINT",99,"Base"],
+["1994 Playoff Contenders Marshall Faulk ROOKIE PSA 9 MINT",102,"Base"],
+["1981 Topps Football Joe Montana ROOKIE PSA 4 VGEX",100,"Base"],
+["2022 Panini Prizm Blue Ice Barry Sanders /99 PSA 9 MINT",88,"Base"],
+["2024 Topps Cosmic Chrome Green Space Dust Caleb Williams ROOKIE /75 PSA 9 MINT",96,"Base"],
+["2000 Press Pass Tom Brady ROOKIE #37 PSA 7 NRMT",99,"Base"],
+["2014 Panini Prizm Red Troy Polamalu PSA 9 MINT",106,"Base"],
+["1989 Topps American Brian Bosworth PSA 10 GEM MINT",89,"Base"],
+["2024 Bowman Chrome University Refractor Carnell Tate AUTO PSA 9 MINT",90,"Base"],
+["2001 Fleer Tradition Pat Tillman ROOKIE PSA 8 NM-MT",100,"Base"],
+["2020 Select Swatches Prizm Patrick Mahomes II PATCH /75 PSA 9 MINT",106,"Base"],
+["2024 Donruss Optic Purple Scope Brian Thomas Jr. PSA 10 GEM MINT",85,"Base"],
+["2023 Panini Prizm Draft Picks Blue Finite Bryce Young ROOKIE /99 PSA 10 GEM",103,"Base"],
+["2024 Panini Prizm Draft Picks Red Joe Milton III ROOKIE AUTO /199 PSA 10 GEM",105,"Base"],
+["2024 Panini Prizm Draft Picks Purple Ice Dylan Raiola ROOKIE /149 PSA 9 MINT",108,"Base"],
+["2024 Bowman Best University Drew Allar RC PATCH AUTO /49 PSA 9 MINT",209,"Base"],
+["2024 Panini Prizm Red Yellow Joe Milton III ROOKIE /44 PSA 8 NM-MT",200,"Base"],
+["2023 Topps Composite Resurgence Signatures CJ Stroud ROOKIE AUTO /175 PSA 10",194,"Base"],
+["2023 Panini Contenders Optic Cracked Ice Demarvion Overshown ROOKIE AUTO /22 PSA 9 MINT",185,"Base"],
+["2023 Panini Contenders Optic Blue Hendon Hooker ROOKIE AUTO /75 PSA 9 MINT",106,"Base"]
+];
+
+var cards=[], activeCtab="all", sortKey="rank", sortAsc=true;
+
+function dollar(n){
+  return "$"+Number(n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function sumArr(a){var s=0;for(var i=0;i<a.length;i++)s+=a[i];return s;}
+
+function loadBuiltIn(){
+  cards=[];
+  for(var i=0;i<RAW.length;i++) cards.push({name:RAW[i][0],val:RAW[i][1],tier:RAW[i][2],rank:i+1});
+  document.getElementById("pstatus").textContent=cards.length+" cards loaded.";
+  renderAll();
+}
+
+function parsePaste(raw){
+  var lines=raw.split("\n");
+  for(var i=0;i<lines.length;i++) lines[i]=lines[i].trim();
+  var result=[];
+  for(var i=0;i<lines.length;i++){
+    var line=lines[i];
+    if(!line) continue;
+    var vm=line.match(/Card Ladder Value \$?([\d,]+(?:\.\d+)?)/i);
+    if(!vm) continue;
+    var val=parseFloat(vm[1].replace(/,/g,""));
+    var tier="Base", name="";
+    for(var f=i+1;f<=Math.min(lines.length-1,i+3);f++){
+      var fl=lines[f];
+      if(!fl) break;
+      if(/^(Grail|Chase|Base)$/i.test(fl)){tier=fl.charAt(0).toUpperCase()+fl.slice(1).toLowerCase();break;}
+    }
+    for(var b=i-1;b>=Math.max(0,i-4);b--){
+      var bl=lines[b];
+      if(!bl) break;
+      if(/^(Grail|Chase|Base)$/i.test(bl)) continue;
+      if(!/Card Ladder/i.test(bl)){name=bl;break;}
+    }
+    if(name) result.push({name:name,val:val,tier:tier,rank:result.length+1});
+  }
+  return result;
+}
+
+function loadPaste(){
+  var raw=document.getElementById("pasteBox").value.trim();
+  if(!raw) return;
+  var parsed=parsePaste(raw);
+  if(!parsed.length){document.getElementById("pstatus").textContent="Could not parse — check format.";return;}
+  cards=parsed;
+  document.getElementById("pstatus").textContent=parsed.length+" cards loaded.";
+  renderAll();
+}
+
+function setMain(name,btn){
+  document.querySelectorAll(".mtab").forEach(function(b){b.classList.remove("on");});
+  btn.classList.add("on");
+  document.querySelectorAll(".panel").forEach(function(p){p.classList.remove("on");});
+  document.getElementById("panel-"+name).classList.add("on");
+  if(name==="regression") renderRegression();
+}
+
+function setCtab(t,btn){
+  activeCtab=t;
+  document.querySelectorAll(".ctab").forEach(function(b){b.classList.remove("on");});
+  btn.classList.add("on");
+  renderTable();
+}
+
+function applySort(){
+  var parts=document.getElementById("srt").value.split("-");
+  sortKey=parts[0]; sortAsc=parts[1]==="asc";
+  renderTable();
+}
+
+function getFiltered(){
+  var q=document.getElementById("q").value.toLowerCase();
+  var minv=parseFloat(document.getElementById("minv").value)||0;
+  var out=[];
+  for(var i=0;i<cards.length;i++){
+    var c=cards[i];
+    if(activeCtab!=="all"&&c.tier!==activeCtab) continue;
+    if(c.val<minv) continue;
+    if(q&&c.name.toLowerCase().indexOf(q)===-1) continue;
+    out.push(c);
+  }
+  return out;
+}
+
+function tierStats(tier){
+  var arr=[];
+  for(var i=0;i<cards.length;i++){if(cards[i].tier===tier) arr.push(cards[i].val);}
+  if(!arr.length) return{n:0,avg:0,min:0,max:0};
+  return{n:arr.length,avg:sumArr(arr)/arr.length,min:Math.min.apply(null,arr),max:Math.max.apply(null,arr)};
+}
+
+function baseStats(){
+  var arr=[];
+  for(var i=0;i<cards.length;i++){if(cards[i].tier==="Base") arr.push(cards[i].val);}
+  if(!arr.length) return null;
+  arr.sort(function(a,b){return a-b;});
+  var avg=sumArr(arr)/arr.length;
+  var mid=arr.length%2===0?(arr[arr.length/2-1]+arr[arr.length/2])/2:arr[Math.floor(arr.length/2)];
+  var bel=0;
+  for(var i=0;i<arr.length;i++){if(arr[i]<avg) bel++;}
+  return{avg:avg,min:arr[0],max:arr[arr.length-1],median:mid,count:arr.length,below:bel,above:arr.length-bel};
+}
+
+// ── Feature extraction ──────────────────────────────────────────────────────
+function extractFeatures(card){
+  var n=card.name.toUpperCase();
+  var grade=0;
+  var gm=n.match(/PSA\s*(\d+(?:\.\d+)?)|BGS\s*(\d+(?:\.\d+)?)/);
+  if(gm) grade=parseFloat(gm[1]||gm[2]);
+  var printRun=0;
+  var pm=n.match(/\/(\d+)/);
+  if(pm) printRun=parseInt(pm[1]);
+  var isAuto=/\bAUTO\b/.test(n)?1:0;
+  var isRookie=/\bROOKIE\b/.test(n)?1:0;
+  var isGrail=card.tier==="Grail"?1:0;
+  var isChase=card.tier==="Chase"?1:0;
+  var printScore=printRun>0?Math.max(0,(6-Math.log10(printRun))/6):0;
+  return{grade:grade,printRun:printRun,printScore:printScore,isAuto:isAuto,isRookie:isRookie,isGrail:isGrail,isChase:isChase};
+}
+
+// ── OLS via Gaussian elimination ─────────────────────────────────────────────
+function olsRegress(X,y){
+  var n=X.length,k=X[0].length;
+  var XtX=[],Xty=[];
+  for(var i=0;i<k;i++){XtX.push([]);Xty.push(0);for(var j=0;j<k;j++) XtX[i].push(0);}
+  for(var r=0;r<n;r++){
+    for(var i=0;i<k;i++){
+      Xty[i]+=X[r][i]*y[r];
+      for(var j=0;j<k;j++) XtX[i][j]+=X[r][i]*X[r][j];
+    }
+  }
+  var aug=[];
+  for(var i=0;i<k;i++){aug.push(XtX[i].slice());aug[i].push(Xty[i]);}
+  for(var col=0;col<k;col++){
+    var pivot=col;
+    for(var row=col+1;row<k;row++){if(Math.abs(aug[row][col])>Math.abs(aug[pivot][col])) pivot=row;}
+    var tmp=aug[col];aug[col]=aug[pivot];aug[pivot]=tmp;
+    if(Math.abs(aug[col][col])<1e-10) continue;
+    var sc=aug[col][col];
+    for(var j=col;j<=k;j++) aug[col][j]/=sc;
+    for(var row=0;row<k;row++){
+      if(row===col) continue;
+      var f=aug[row][col];
+      for(var j=col;j<=k;j++) aug[row][j]-=f*aug[col][j];
+    }
+  }
+  var beta=[];
+  for(var i=0;i<k;i++) beta.push(aug[i][k]);
+  var yMean=sumArr(y)/n,ssTot=0,ssRes=0,preds=[];
+  for(var r=0;r<n;r++){
+    var yhat=0;
+    for(var j=0;j<k;j++) yhat+=beta[j]*X[r][j];
+    preds.push(yhat);
+    ssRes+=Math.pow(y[r]-yhat,2);
+    ssTot+=Math.pow(y[r]-yMean,2);
+  }
+  return{beta:beta,preds:preds,r2:ssTot>0?Math.max(0,1-ssRes/ssTot):0};
+}
+
+function runRegression(){
+  if(cards.length<5) return null;
+  var X=[],y=[];
+  for(var i=0;i<cards.length;i++){
+    var f=extractFeatures(cards[i]);
+    X.push([1,f.grade,f.printScore,f.isAuto,f.isRookie,f.isGrail,f.isChase]);
+    y.push(cards[i].val);
+  }
+  var res=olsRegress(X,y);
+  var labels=["Intercept","Grade (PSA/BGS)","Print scarcity","Auto","Rookie","Grail tier","Chase tier"];
+  var coefs=[];
+  for(var i=0;i<labels.length;i++) coefs.push({label:labels[i],beta:res.beta[i]});
+  var residuals=[];
+  for(var i=0;i<cards.length;i++){
+    residuals.push({card:cards[i],actual:cards[i].val,pred:res.preds[i],resid:cards[i].val-res.preds[i]});
+  }
+  residuals.sort(function(a,b){return Math.abs(b.resid)-Math.abs(a.resid);});
+  return{coefs:coefs,r2:res.r2,residuals:residuals};
+}
+
+function renderRegression(){
+  var reg=runRegression();
+  if(!reg){
+    document.getElementById("reg-coefs").innerHTML="<p style='font-size:12px;color:var(--tx2);'>Need at least 5 cards to run regression.</p>";
+    return;
+  }
+  var coefHtml="";
+  var interps=["","per grade point","low print run premium","having an auto","being a rookie","Grail vs Base","Chase vs Base"];
+  for(var i=1;i<reg.coefs.length;i++){
+    var c=reg.coefs[i];
+    var cls=c.beta>=0?"pos":"neg";
+    var sign=c.beta>=0?"+":"";
+    coefHtml+="<div class='coef-card'><div class='coef-name'>"+c.label+"</div>";
+    coefHtml+="<div class='coef-val "+cls+"'>"+sign+dollar(c.beta)+"</div>";
+    coefHtml+="<div class='coef-sub'>"+interps[i]+"</div></div>";
+  }
+  document.getElementById("reg-coefs").innerHTML=coefHtml;
+  var r2pct=Math.round(reg.r2*100);
+  document.getElementById("r2-fill").style.width=r2pct+"%";
+  document.getElementById("r2-val").textContent=r2pct+"%";
+  document.getElementById("reg-note").textContent=
+    r2pct>=70?"Strong fit — card features explain most value variation in this pool.":
+    r2pct>=40?"Moderate fit — features explain some value; player/brand name also matters.":
+    "Low fit — value is driven largely by factors beyond grade, print run, and tier (likely player name).";
+
+  var features=[
+    {label:"Has auto",fn:function(c){return /\bAUTO\b/.test(c.name.toUpperCase());}},
+    {label:"Rookie",fn:function(c){return /\bROOKIE\b/.test(c.name.toUpperCase());}},
+    {label:"PSA 10",fn:function(c){return /PSA\s*10/.test(c.name.toUpperCase());}},
+    {label:"PSA 9",fn:function(c){return /PSA\s*9[^\d]/.test(c.name.toUpperCase());}},
+    {label:"Numbered /100 or less",fn:function(c){var m=c.name.match(/\/(\d+)/);return m&&parseInt(m[1])<=100;}},
+    {label:"Numbered /25 or less",fn:function(c){var m=c.name.match(/\/(\d+)/);return m&&parseInt(m[1])<=25;}},
+    {label:"Grail",fn:function(c){return c.tier==="Grail";}},
+    {label:"Chase",fn:function(c){return c.tier==="Chase";}}
+  ];
+  var dHtml="";
+  for(var i=0;i<features.length;i++){
+    var ff=features[i];
+    var wc=cards.filter(function(c){return ff.fn(c);});
+    var nc=cards.filter(function(c){return !ff.fn(c);});
+    var wa=wc.length?sumArr(wc.map(function(c){return c.val;}))/wc.length:0;
+    var na=nc.length?sumArr(nc.map(function(c){return c.val;}))/nc.length:0;
+    var delta=wa-na;
+    var dc=delta>0?"color:var(--ok)":delta<0?"color:var(--bad)":"";
+    var ds=delta>0?"+":"";
+    dHtml+="<tr><td>"+ff.label+"</td><td>"+wc.length+"</td><td>"+dollar(wa)+"</td>";
+    dHtml+="<td>"+nc.length+"</td><td>"+dollar(na)+"</td>";
+    dHtml+="<td style='"+dc+";font-weight:500;'>"+ds+dollar(delta)+"</td></tr>";
+  }
+  document.getElementById("driver-tbody").innerHTML=dHtml;
+
+  var rHtml="";
+  var show=Math.min(reg.residuals.length,20);
+  for(var i=0;i<show;i++){
+    var r=reg.residuals[i];
+    var bc=r.card.tier==="Grail"?"bdgg":r.card.tier==="Chase"?"bdgc":"bdgb";
+    var rc=r.resid>0?"color:var(--ok)":"color:var(--bad)";
+    var rs=r.resid>0?"+":"";
+    rHtml+="<tr><td title='"+r.card.name+"' style='max-width:0;'>"+r.card.name+"</td>";
+    rHtml+="<td><span class='badge "+bc+"'>"+r.card.tier+"</span></td>";
+    rHtml+="<td>"+dollar(r.actual)+"</td><td>"+dollar(r.pred)+"</td>";
+    rHtml+="<td style='"+rc+";font-weight:500;'>"+rs+dollar(r.resid)+"</td></tr>";
+  }
+  document.getElementById("resid-tbody").innerHTML=rHtml;
+}
+
+// ── Upside-weighted Pack Quality Score ───────────────────────────────────────
+function calcPackScore(){
+  var total=cards.length;
+  if(!total) return null;
+  var ng=0,nc=0,baseVals=[],hitVals=[],grailVals=[],allVals=[];
+  for(var i=0;i<cards.length;i++){
+    var c=cards[i];
+    allVals.push(c.val);
+    if(c.tier==="Grail"){ng++;hitVals.push(c.val);grailVals.push(c.val);}
+    else if(c.tier==="Chase"){nc++;hitVals.push(c.val);}
+    else{baseVals.push(c.val);}
+  }
+  var hitRate=(ng+nc)/total;
+  var baseAvg=baseVals.length?sumArr(baseVals)/baseVals.length:0;
+  var hitAvg=hitVals.length?sumArr(hitVals)/hitVals.length:0;
+  var grailMax=grailVals.length?Math.max.apply(null,grailVals):0;
+  var poolAvg=sumArr(allVals)/allVals.length;
+  var sv=allVals.slice().sort(function(a,b){return a-b;});
+  var p90=sv[Math.ceil(0.9*sv.length)-1]||0;
+  var p10=sv[Math.floor(0.1*sv.length)]||sv[0]||1;
+
+  // Regression bonus: if confirmed tier premium is large, add up to 5 pts
+  var regBonus=0;
+  try{
+    var reg=runRegression();
+    if(reg&&reg.coefs.length>=7){
+      var avgPremium=(reg.coefs[5].beta+reg.coefs[6].beta)/2;
+      regBonus=Math.min(5,Math.max(0,avgPremium/200)*5);
+    }
+  }catch(e){}
+
+  // Factors — upside-heavy weighting
+  var f1=baseAvg>0&&hitAvg>0?Math.min((hitAvg/baseAvg)/10,1):0;       // upside magnitude  35pts
+  var f2=Math.min(hitRate/0.4,1);                                        // hit accessibility 20pts
+  var f3=baseAvg?Math.min(baseAvg/100,1):0;                              // base protection   15pts
+  var f4=poolAvg>0&&grailMax>0?Math.min((grailMax/poolAvg)/20,1):0;    // grail ceiling     20pts
+  var f5=p10>0?Math.min((p90/p10)/20,1):0;                              // value spread      10pts
+
+  var raw=(f1*35)+(f2*20)+(f3*15)+(f4*20)+(f5*10)+regBonus;
+  var score=Math.min(100,Math.round(raw));
+
+  var grade,color,desc;
+  if(score>=80){grade="Elite";color="#BA7517";desc="Massive upside with accessible hits";}
+  else if(score>=65){grade="Strong";color="#1a7f4b";desc="Above-average upside and solid base";}
+  else if(score>=50){grade="Average";color="#185fa5";desc="Moderate upside, reasonable base floor";}
+  else if(score>=35){grade="Below avg";color="#888780";desc="Limited upside or thin hit odds";}
+  else{grade="Poor";color="#a32d2d";desc="Low upside relative to base-heavy odds";}
+
+  var factors=[
+    {label:"Upside magnitude",val:Math.round(f1*35),max:35},
+    {label:"Grail ceiling",val:Math.round(f4*20),max:20},
+    {label:"Hit accessibility",val:Math.round(f2*20),max:20},
+    {label:"Base protection",val:Math.round(f3*15),max:15},
+    {label:"Value spread",val:Math.round(f5*10),max:10}
+  ];
+  if(regBonus>0) factors.push({label:"Reg. bonus",val:Math.round(regBonus),max:5});
+
+  return{score:score,grade:grade,color:color,desc:desc,
+    hitRate:hitRate,baseAvg:baseAvg,ng:ng,nc:nc,factors:factors,
+    baseBelow:baseVals.filter(function(v){return v<baseAvg;}).length,
+    baseCount:baseVals.length};
+}
+
+function copyInsights(){
+  var text=document.getElementById("ins-txt").textContent;
+  if(!text||text==="Load a checklist to generate insights.") return;
+  var btn=document.getElementById("copy-btn");
+  var done=function(){btn.textContent="Copied!";btn.classList.add("ok");setTimeout(function(){btn.textContent="Copy";btn.classList.remove("ok");},2000);};
+  if(navigator.clipboard){navigator.clipboard.writeText(text).then(done);}
+  else{var ta=document.createElement("textarea");ta.value=text;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);done();}
+}
+
+function renderAll(){
+  var total=cards.length;
+  var ng=0,nc=0,allvals=[];
+  for(var i=0;i<cards.length;i++){
+    allvals.push(cards[i].val);
+    if(cards[i].tier==="Grail") ng++;
+    else if(cards[i].tier==="Chase") nc++;
+  }
+  var nb=total-ng-nc, hits=ng+nc;
+  var avg=total?sumArr(allvals)/total:0;
+  var sv=allvals.slice().sort(function(a,b){return a-b;});
+  var p90idx=Math.ceil(0.9*sv.length)-1;
+  var p90val=sv.length?sv[p90idx]:0;
+  var p90count=0;
+  for(var i=0;i<allvals.length;i++){if(allvals[i]>=p90val) p90count++;}
+
+  document.getElementById("s-total").textContent=total;
+  document.getElementById("s-grail").textContent=ng;
+  document.getElementById("s-chase").textContent=nc;
+  document.getElementById("s-base").textContent=nb;
+  document.getElementById("s-hit").textContent=total?((hits/total)*100).toFixed(1)+"%":"-";
+  document.getElementById("s-godd").textContent=total?((ng/total)*100).toFixed(1)+"%":"-";
+  document.getElementById("s-ev").textContent=avg?dollar(avg):"-";
+  document.getElementById("s-p90v").textContent=p90val?dollar(p90val):"-";
+  document.getElementById("s-p90n").textContent=p90count||"-";
+  document.getElementById("foot").textContent="Pool EV = average Card Ladder value across all "+total+" cards. Each pack draws one card at random.";
+
+  var bs=baseStats();
+  if(bs){
+    document.getElementById("b-avg").textContent=dollar(bs.avg);
+    document.getElementById("b-min").textContent=dollar(bs.min);
+    document.getElementById("b-max").textContent=dollar(bs.max);
+    document.getElementById("b-med").textContent=dollar(bs.median);
+    document.getElementById("b-cnt").textContent=bs.count;
+    document.getElementById("b-bel").textContent=bs.below+" cards";
+    document.getElementById("b-abv").textContent=bs.above+" cards";
+    document.getElementById("b-note").textContent=bs.below+" of "+bs.count+" base cards fall below the average";
+  }
+
+  var ts=["Grail","Chase","Base"], ids=["g","c","b"];
+  for(var i=0;i<ts.length;i++){
+    var s=tierStats(ts[i]),k=ids[i];
+    document.getElementById("t-"+k+"n").textContent=s.n;
+    document.getElementById("t-"+k+"avg").textContent=s.n?"avg "+dollar(s.avg):"-";
+    document.getElementById("t-"+k+"rng").textContent=s.n?dollar(s.min)+" to "+dollar(s.max):"-";
+  }
+
+  var pqs=calcPackScore();
+  if(pqs){
+    var ne=document.getElementById("pqs-num");
+    ne.textContent=pqs.score; ne.style.color=pqs.color;
+    var ge=document.getElementById("pqs-grade");
+    ge.textContent=pqs.grade; ge.style.color=pqs.color;
+    document.getElementById("pqs-desc").textContent=pqs.desc;
+    var sbHtml="";
+    for(var i=0;i<pqs.factors.length;i++){
+      var ff=pqs.factors[i];
+      var pct=Math.round((ff.val/ff.max)*100);
+      sbHtml+="<div class='sb-row'><span class='sb-lbl'>"+ff.label+"</span>";
+      sbHtml+="<div class='sb-bg'><div class='sb-fill' style='width:"+pct+"%'></div></div>";
+      sbHtml+="<span class='sb-pts'>"+ff.val+"/"+ff.max+"</span></div>";
+    }
+    document.getElementById("pqs-sb").innerHTML=sbHtml;
+    var hp=(pqs.hitRate*100).toFixed(1);
+    document.getElementById("ins-txt").textContent=
+      "For this pack, there is a "+hp+"% hit rate with a "+dollar(pqs.baseAvg)+
+      " base pack average value. "+pqs.baseBelow+" of "+pqs.baseCount+
+      " base cards fall below the average. Based on the data, a Pack Quality Score of "+
+      pqs.score+"/100 ("+pqs.grade+") is the score for this pack.";
+  }
+
+  renderTable();
+}
+
+function renderTable(){
+  var filtered=getFiltered(), total=cards.length;
+  var maxVal=1;
+  for(var i=0;i<cards.length;i++){if(cards[i].val>maxVal) maxVal=cards[i].val;}
+  var bs=baseStats();
+  document.getElementById("fcount").textContent=filtered.length<total?filtered.length+" of "+total+" cards":"";
+  filtered.sort(function(a,b){
+    var av=sortKey==="val"?a.val:sortKey==="name"?a.name.toLowerCase():a.rank;
+    var bv=sortKey==="val"?b.val:sortKey==="name"?b.name.toLowerCase():b.rank;
+    if(av<bv) return sortAsc?-1:1;
+    if(av>bv) return sortAsc?1:-1;
+    return 0;
+  });
+  var tbody=document.getElementById("tbody"), nores=document.getElementById("nores");
+  if(!filtered.length){tbody.innerHTML="";nores.style.display="";return;}
+  nores.style.display="none";
+  var html="";
+  for(var i=0;i<filtered.length;i++){
+    var c=filtered[i];
+    var bc=c.tier==="Grail"?"bdgg":c.tier==="Chase"?"bdgc":"bdgb";
+    var fc=c.tier==="Grail"?"fgrail":c.tier==="Chase"?"fchase":"fbase";
+    var pc=c.tier==="Grail"?"plg":c.tier==="Chase"?"plc":"plb";
+    var odds=(1/total*100).toFixed(2);
+    var bw=Math.max(2,Math.round((c.val/maxVal)*100));
+    var delta="";
+    if(c.tier==="Base"&&bs){
+      var diff=c.val-bs.avg;
+      var col=diff>=0?"var(--ok)":"var(--bad)";
+      var sign=diff>=0?"+":"";
+      delta=" <span style='font-size:10px;color:"+col+";'>"+sign+dollar(Math.abs(diff))+"</span>";
+    }
+    html+="<tr>";
+    html+="<td title='"+c.name+"' style='max-width:0;'>"+c.name+"</td>";
+    html+="<td><span class='badge "+bc+"'>"+c.tier+"</span></td>";
+    html+="<td>"+dollar(c.val)+delta+"</td>";
+    html+="<td><div class='barwrap'><div class='bar'><div class='barfill "+fc+"' style='width:"+bw+"%'></div></div><span class='pill "+pc+"'>"+odds+"%</span></div></td>";
+    html+="<td style='color:var(--tx2);'>#"+c.rank+"</td>";
+    html+="</tr>";
+  }
+  tbody.innerHTML=html;
+}
+
+loadBuiltIn();
+</script>
+</body>
+</html>
